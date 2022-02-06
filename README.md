@@ -11,9 +11,10 @@ Rust embedded-HAL driver for the AHT20 temperature and humidity sensor.
 
 ## Example
 
-There is an example app for the Blue Pill board in the <examples/blue_pill/>
-directory. You can run that with `cargo run --release`. It will read the
-temperature and humidity and print it the console.
+There is an example app for the Blue Pill board in the
+[examples/blue_pill/](examples/blue_pill/) directory. You can run that with
+`cargo run --release`. It will read the temperature and humidity and print it
+the console.
 
 
 ## How to use
