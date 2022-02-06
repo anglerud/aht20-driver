@@ -1,14 +1,24 @@
 [package]
 name = "aht20-driver"
+authors = ["Rikard Anglerud <rikard@anglerud.com>"]
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT OR Apache-2.0"
+categories = ["embedded", "hardware-support", "no-std"]
+keywords = ["no-std", "embedded-hal-driver", "sensor", "temperature", "humidity"]
+description = "Rust embedded-hal driver for the AHT20 temperature and humidity sensor."
+homepage = "https://github.com/anglerud/aht20-driver"
+repository = "https://github.com/anglerud/aht20-driver"
+documentation = "https://docs.rs/aht20-driver"
+readme = "README.md"
 
 [dependencies]
-crc-any = "2.4.1"
 embedded-hal = "0.2.6"
 rtt-target = { version = "0.2.0", features = ["cortex-m"] }
+
+[dependencies.crc-any]
+version = "2.4.1"
+default-features = false
 
 [dev-dependencies]
 embedded-hal-mock =  "0.8.0"

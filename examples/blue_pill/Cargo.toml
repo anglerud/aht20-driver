@@ -1,0 +1,26 @@
+[package]
+name = "aht20_blue_pill_example"
+version = "1.0.0"
+authors = ["Rikard Anglerud <rikard@anglerud.com>"]
+description = "Example for the aht20-driver crate with a Blue Pill board."
+categories = ["embedded", "no-std"]
+edition = "2021"
+
+[dependencies]
+cortex-m = "0.6.2"
+cortex-m-rt = "0.6.12"
+rtt-target = { version = "0.2.0", features = ["cortex-m"] }
+panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
+embedded-hal = "0.2.4"
+nb = "1.0.0"
+aht20-driver = { path = "../.." }
+
+
+[dependencies.stm32f1xx-hal]
+version = "0.6.1"
+features = ["rt", "stm32f103", "medium"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+debug = true
