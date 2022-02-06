@@ -8,6 +8,10 @@ Rust embedded-HAL driver for the AHT20 temperature and humidity sensor.
 
 ![Blue Pill with AHT20 sensor](project_example.jpg)
 
+You can read my blog post [AHT20 thermometer
+driver](http://www.rawmeat.org/code/20220130-aht20_driver/) which details the
+creation of this driver.
+
 
 ## Example
 
