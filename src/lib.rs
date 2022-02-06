@@ -113,18 +113,6 @@
 //!        Calc Humidity and Temp
 //! ```
 
-// TODO:
-// * split into independent crate, push to github, and push to staging repo
-// * write README for the repo
-// * update links in blog
-// * push 0.0.1 to real repo
-// * use external crate in the lps25_demo... app.
-// * push 1.0.0 to real repo
-// * publish blog
-// * submit driver and blog to embedded awesome
-// * submit driver and blog to /r/rust
-// * submit driver and blog to rust discourse
-// * submit driver and blog to the embedded rust discord?
 use crc_any::CRCu8;
 use embedded_hal::blocking::delay::{DelayMs, DelayUs};
 use embedded_hal::blocking::i2c;
