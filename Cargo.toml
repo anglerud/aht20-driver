@@ -14,7 +14,9 @@ readme = "README.md"
 
 [dependencies]
 embedded-hal = "0.2.6"
-rtt-target = { version = "0.2.0", features = ["cortex-m"] }
+
+[dependencies.defmt]
+version = "0.3.0"
 
 [dependencies.crc-any]
 version = "2.4.1"
@@ -22,3 +24,7 @@ default-features = false
 
 [dev-dependencies]
 embedded-hal-mock =  "0.8.0"
+
+[dev-dependencies.defmt]
+version = "0.3.0"
+features = ["unstable-test"]
