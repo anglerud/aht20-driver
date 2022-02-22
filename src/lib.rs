@@ -263,7 +263,7 @@ pub enum Error<E> {
     /// Unexpectedly not ready - this can happen when the sensor sends back "busy" but the
     /// I2C data gets corrupted and we receive "ready", then later the
     /// CRC-checked status byte correctly reports "busy" and we have to abort the measurement.
-    UnexpectedReady,
+    UnexpectedBusy,
     /// Errors such as overflowing the stack.
     Internal,
 }
@@ -324,6 +324,7 @@ where
 
         while !self.check_status()?.is_calibrated() {
             self.send_initialize()?;
+            defmt::debug!("init: waiting for calibrated, 10ms.");
             delay.delay_ms(10_u16);
         }
 
@@ -442,9 +443,16 @@ where
                 Ok(sb) => {
                     return Ok(SensorReading::from_bytes(sb));
                 }
-                // TODO(anglerud, 2022-02-06): how do we log these errors? We're a library.
-                Err(Error::InvalidCrc) => (),      // Try again
-                Err(Error::UnexpectedReady) => (), // Try again
+                Err(Error::InvalidCrc) => {
+                    // CRC failed to validate, we'll go back and issue another read request.
+                    defmt::error!("Invalid CRC, retrying.");
+                    ()
+                },
+                Err(Error::UnexpectedBusy) => {
+                    // Possibly indicates the previously seen 'ready' was due to uncorrected noise.
+                    defmt::error!("Sensor contradicted a ready status with a crc-checked busy.");
+                    ()
+                },
                 Err(other) => return Err(other),
             }
         }
@@ -463,6 +471,7 @@ where
 
         // Wait for measurement to be ready
         while !self.aht20.check_status()?.is_ready() {
+            defmt::debug!("measure_once: waiting for ready, 1ms.");
             delay.delay_ms(1_u16);
         }
 
@@ -486,7 +495,7 @@ where
         // by noise on the i2c bus. This byte has been CRC-checked.
         let status = SensorStatus::new(read_buffer[0]);
         if !status.is_ready() {
-            return Err(Error::UnexpectedReady);
+            return Err(Error::UnexpectedBusy);
         }
 
         // Arrays implement TryFrom for slices. In case the length of the slice does not match
@@ -870,10 +879,10 @@ mod tests {
         let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
         let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
         // We received a ready from the check_status method, then a busy in the CRC-checked
-        // status byte - and therefore we got the UnexpectedReady.
+        // status byte - and therefore we got the UnexpectedBusy.
         assert_eq!(
             aht20_init.measure_once(&mut mock_delay),
-            Err(Error::UnexpectedReady)
+            Err(Error::UnexpectedBusy)
         );
 
         let mock = &mut aht20_init.destroy().aht20.i2c;

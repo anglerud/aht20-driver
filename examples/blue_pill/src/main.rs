@@ -3,12 +3,13 @@
 //! This needs an AHT20 temperature and humidity sensor connected to PB6 and PB7. If you're using a
 //! Stemma QT/Qwiic cable - the yellow wire should be connected to pb6 (SCL), and the blue wire
 //! should be connected to pb7 (SDA).
-#![no_std]
 #![no_main]
+#![no_std]
 
-// This is the "Real Time Terminal" support for the debugger. I'm using an ST-Link V2 clone.
-use panic_rtt_target as _;
-use rtt_target::{rprintln, rtt_init_print};
+// Global logger using "Real Time Terminal" support for the debugger. I'm using an ST-Link V2 clone.
+// This goes via Knurlin-rs' defmt.
+use defmt_rtt as _;
+use panic_probe as _;
 
 // The Blue Pill's HAL crate imports.
 use cortex_m_rt::entry;
@@ -25,8 +26,6 @@ const DATA_TIMEOUT_US: u32 = 10000;
 
 #[entry]
 fn main() -> ! {
-    // Init buffers for debug printing
-    rtt_init_print!();
     // Get access to the core peripherals from the cortex-m crate
     let cp = cortex_m::Peripherals::take().unwrap();
     // Get access to the device specific peripherals from the peripheral access crate
@@ -78,9 +77,9 @@ fn main() -> ! {
         // Take the temperature and humidity measurement.
         let aht20_measurement = aht20.measure(&mut delay).unwrap();
 
-        rprintln!("temperature (aht20): {:.2}C", aht20_measurement.temperature);
-        rprintln!("humidity (aht20): {:.2}%", aht20_measurement.humidity);
-        rprintln!("--");
+        defmt::println!("temperature (aht20): {=f32}C", aht20_measurement.temperature);
+        defmt::println!("humidity (aht20): {=f32}%", aht20_measurement.humidity);
+        defmt::println!("--");
 
         // Blink the Blue Pill's onboard LED to show liveness.
         delay.delay_ms(1_000_u16);
