@@ -203,6 +203,48 @@ impl SensorReading {
     ///
     /// This is done by the `measure` method.
     fn from_bytes(sensor_data: [u8; 5]) -> Self {
+        let (humidity_val, temperature_val) = SensorReading::raw_from_bytes(sensor_data);
+
+        // From section 6.1 "Relative humidity transformation" here is how we turn this into
+        // a relative humidity percantage value.
+        let humidity_percent = (humidity_val as f32) / ((1 << 20) as f32) * 100.0;
+
+        // From section 6.2 "Temperature transformation" here is how we turn this into
+        // a temprature in °C.
+        let temperature_celcius = (temperature_val as f32) / ((1 << 20) as f32) * 200.0 - 50.0;
+
+        SensorReading {
+            humidity: humidity_percent as f32,
+            temperature: temperature_celcius,
+        }
+    }
+
+    /// Identical to `from_bytes`, but doesn't use floating point math.
+    ///
+    /// This limits the precision to just integer values, but doesn't bring in floating point
+    /// libraries on microcontrollers with no FP support, saving space and being faster.
+    fn from_bytes_no_fp(sensor_data: [u8; 5]) -> Self {
+        let (humidity_val, temperature_val) = SensorReading::raw_from_bytes(sensor_data);
+
+        // From section 6.1 "Relative humidity transformation" here is how we turn this into
+        // a relative humidity percantage value.
+        let humidity_percent = (100 * humidity_val) >> 20;
+
+        // From section 6.2 "Temperature transformation" here is how we turn this into
+        // a temprature in °C.
+        let temperature_celcius = (((200 * temperature_val) >> 20) - 50) as f32;
+
+        SensorReading {
+            humidity: humidity_percent as f32,
+            temperature: temperature_celcius,
+        }
+    }
+
+    /// Turn the raw data from a sensor reding into two u32 raw values.
+    ///
+    /// These values still need to be converted into %age humidity and degrees C, this is done with
+    /// `from_bytes` and `from_bytes_no_fp`. This is just a helper method for the aforementioned.
+    fn raw_from_bytes(sensor_data: [u8; 5]) -> (u32, u32) {
         // Our five bytes of sensor data is split into 20 bits (two and a half bytes) humidity and
         // 20 bits temperature. We'll have to spend a bit of time splitting the middle byte up.
         let humidity_bytes: &[u8] = &sensor_data[..2];
@@ -221,10 +263,6 @@ impl SensorReading {
         // We combine them to form the complete 20 bits: 0x0000_0000_0000_1111_1111_1111_1111_1111
         let humidity_val: u32 = left_bits_humidity | middle_bits_humidity | right_bits_humidity;
 
-        // From section 6.1 "Relative humidity transformation" here is how we turn this into
-        // a relative humidity percantage value.
-        let humidity_percent = (humidity_val as f32) / ((1 << 20) as f32) * 100.0;
-
         // With that same example byte - we want to keep only the last four bits this time, so we
         // mask the first four and end up with 0x0000_1010. These bits end up at the very start of
         // our 20-bit temperature value. In the final 32-bit value they're these ones:
@@ -242,14 +280,7 @@ impl SensorReading {
         // We combine them to form the complete 20 bits: 0x0000_0000_0000_1111_1111_1111_1111_1111
         let temperature_val: u32 = left_bits_temp | middle_bits_temp | right_bits_temp;
 
-        // From section 6.2 "Temperature transformation" here is how we turn this into
-        // a temprature in °C.
-        let temperature_celcius = (temperature_val as f32) / ((1 << 20) as f32) * 200.0 - 50.0;
-
-        SensorReading {
-            humidity: humidity_percent,
-            temperature: temperature_celcius,
-        }
+        (humidity_val, temperature_val)
     }
 }
 
@@ -442,6 +473,40 @@ where
             match measurement_result {
                 Ok(sb) => {
                     return Ok(SensorReading::from_bytes(sb));
+                }
+                Err(Error::InvalidCrc) => {
+                    // CRC failed to validate, we'll go back and issue another read request.
+                    defmt::error!("Invalid CRC, retrying.");
+                    ()
+                },
+                Err(Error::UnexpectedBusy) => {
+                    // Possibly indicates the previously seen 'ready' was due to uncorrected noise.
+                    defmt::error!("Sensor contradicted a ready status with a crc-checked busy.");
+                    ()
+                },
+                Err(other) => return Err(other),
+            }
+        }
+    }
+
+    /// This is identical to `measure`, except it doesn't use floating point math.
+    ///
+    /// This means it can be used on microcontrollers with no FP support, without having
+    /// to bring in floating point math functions, which can take up a lot of space, and
+    /// might be slow.
+    ///
+    /// The drawback is that precision is limited to only integer values.
+    pub fn measure_no_fp(
+        &mut self,
+        delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
+    ) -> Result<SensorReading, Error<E>> {
+        // TODO: See if we can refactor here, the only difference is from_bytes and
+        //       from_bytes_no_fp.
+        loop {
+            let measurement_result = self.measure_once(delay);
+            match measurement_result {
+                Ok(sb) => {
+                    return Ok(SensorReading::from_bytes_no_fp(sb));
                 }
                 Err(Error::InvalidCrc) => {
                     // CRC failed to validate, we'll go back and issue another read request.
@@ -1040,11 +1105,69 @@ mod tests {
         let mock = &mut aht20_init.destroy().aht20.i2c;
         mock.done(); // verify expectations
 
-        // Temp was ~22.5C and humidity ~40% when above data taken.
-        assert!(measurement.temperature > 22.0 && measurement.temperature < 23.0);
-        assert!(measurement.humidity > 39.0 && measurement.humidity < 41.0);
+        // Temp was 22.52C and humidity 39.61% when above data taken.
+        assert!(measurement.temperature > 22.5);
+        assert!(measurement.temperature < 22.6);
+        assert!(measurement.humidity > 39.6 && measurement.humidity < 39.7);
     }
 
+    /// Test a measurement, without using floating point math.
+    ///
+    /// This uses data from an actual sensor run.
+    #[test]
+    fn measure_no_fp() {
+        // setup
+        let expectations = vec![
+            // send_trigger_measurement
+            Transaction::write(
+                SENSOR_ADDRESS,
+                vec![
+                    super::Command::TriggerMeasurement as u8,
+                    0b0011_0011, // 0x33
+                    0b0000_0000, // 0x00
+                ],
+            ),
+            // check_status - with ready bit set to 'ready' (off)
+            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
+            Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
+            // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
+            // These are taken from a run of the sensor.
+            Transaction::read(
+                SENSOR_ADDRESS,
+                vec![
+                    0b0001_1100, //  28, 0x1c - ready, calibrated, and some mystery flags.
+                    //             bit 8 set to 0 is ready. bit 4 set is calibrated. bit 5
+                    //             and 3 are described as 'reserved'.
+                    0b0110_0101, // 101, 0x65 - first byte of humidity value
+                    0b1011_0100, // 180, 0xb4 - second byte of humidity vaue
+                    0b0010_0101, //  37, 0x25 - split byte. 4 bits humidity, 4 bits temperature.
+                    0b1100_1101, // 205, 0xcd - first full byte of temperature.
+                    0b0010_0110, //  38, 0x26 - second full byte of temperature.
+                    0b1100_0110, // 198, 0xc6 - CRC
+                ],
+            ),
+        ];
+        let mock_i2c = I2cMock::new(&expectations);
+        let mut mock_delay = MockDelay::new();
+
+        // test
+        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let measurement = aht20_init.measure_no_fp(&mut mock_delay).unwrap();
+
+        // verification
+        let mock = &mut aht20_init.destroy().aht20.i2c;
+        mock.done(); // verify expectations
+
+        // Temp was 22.52C and humidity 39.61% when above data taken.
+        // No fp mode will found that to 22.0C and 39.0%.
+        println!("temp: {:.2}", measurement.temperature);
+        println!("humidity: {:.2}", measurement.humidity);
+        assert!(measurement.temperature == 22.0);
+        assert!(measurement.humidity == 39.0);
+    }
+
+    /// Test a valid CRC invocation.
     /// Test a valid CRC invocation.
     #[test]
     fn crc_correct() {
