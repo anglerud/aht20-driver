@@ -76,6 +76,10 @@ fn main() -> ! {
     loop {
         // Take the temperature and humidity measurement.
         let aht20_measurement = aht20.measure(&mut delay).unwrap();
+        // NOTE: If you were on a microcontroller with no floating point, then calling
+        //       measure_no_fp would keep floating point emulation functions from being
+        //       added to the binary, reducing its size and making it faster.
+        // let aht20_measurement = aht20.measure_no_fp(&mut delay).unwrap();
 
         defmt::println!("temperature (aht20): {=f32}C", aht20_measurement.temperature);
         defmt::println!("humidity (aht20): {=f32}%", aht20_measurement.humidity);

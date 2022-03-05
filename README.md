@@ -60,6 +60,15 @@ rprintln!("temperature (aht20): {:.2}C", aht20_measurement.temperature);
 rprintln!("humidity (aht20): {:.2}%", aht20_measurement.humidity);
 ```
 
+### No floating point support
+
+There is an alternative measuring function called `measure_no_fp` which also
+performs a measurement, but which does not require floating point calculations.
+This can be good for microcontrollers with limited amounts of RAM, or no
+floating point support. This can both make the binary smaller, and the
+calculations faster for those microcontrollers. The trade-off is that the
+accuracy is limited - only round numbers are returned from this function.
+
 
 ## Contributing
 
