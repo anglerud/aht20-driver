@@ -271,7 +271,7 @@ impl SensorReading {
         let split_byte_temperature: u32 = (split_byte & 0b0000_1111).into();
         // We need to fill the rightmost 20 bits, starting with our split byte
         // In the final 32-bit value they're these ones: 0x0000_0000_0000_1111_0000_0000_0000_0000
-        let left_bits_temp: u32 = (split_byte_temperature << 16).into();
+        let left_bits_temp: u32 = split_byte_temperature << 16;
         // In the final 32-bit value they're these ones: 0x0000_0000_0000_0000_1111_1111_0000_0000
         let middle_bits_temp: u32 = (temperature_bytes[0] as u32) << 8;
         // And just for symmetry...
@@ -321,10 +321,7 @@ where
     /// you must call the `init` method which calibrates the sensor. The address will almost always
     /// be `SENSOR_ADDRESS` from this crate.
     pub fn new(i2c: I, address: u8) -> Self {
-        AHT20 {
-            i2c: i2c,
-            address: address,
-        }
+        AHT20 { i2c, address }
     }
 
     /// Run the AHT20 init and calibration routines.
@@ -477,13 +474,11 @@ where
                 Err(Error::InvalidCrc) => {
                     // CRC failed to validate, we'll go back and issue another read request.
                     defmt::error!("Invalid CRC, retrying.");
-                    ()
-                },
+                }
                 Err(Error::UnexpectedBusy) => {
                     // Possibly indicates the previously seen 'ready' was due to uncorrected noise.
                     defmt::error!("Sensor contradicted a ready status with a crc-checked busy.");
-                    ()
-                },
+                }
                 Err(other) => return Err(other),
             }
         }
@@ -511,13 +506,11 @@ where
                 Err(Error::InvalidCrc) => {
                     // CRC failed to validate, we'll go back and issue another read request.
                     defmt::error!("Invalid CRC, retrying.");
-                    ()
-                },
+                }
                 Err(Error::UnexpectedBusy) => {
                     // Possibly indicates the previously seen 'ready' was due to uncorrected noise.
                     defmt::error!("Sensor contradicted a ready status with a crc-checked busy.");
-                    ()
-                },
+                }
                 Err(other) => return Err(other),
             }
         }
