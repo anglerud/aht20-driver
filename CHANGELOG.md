@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Added continuous integration via Github actions
+
+
+## [1.1.0] - 2022-02-22
+
+### Added
+
+* The `measure_no_fp` method that takes a measurement, but does not use
+  floating point math.
+
 
 ## [1.1.0] - 2022-02-22
 
@@ -18,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Changed from rtt to defmt logging, saving more than 30k of flash space.
+* Changed from rtt to Defmt logging, saving more than 30k of flash space.
 
 
-[Unreleased]: https://github.com/anglerud/aht20-driver/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/anglerud/aht20-driver/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/anglerud/aht20-driver/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/anglerud/aht20-driver/compare/v1.0.0...v1.1.0
