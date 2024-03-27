@@ -9,7 +9,6 @@
 //!     # use aht20_driver::{AHT20, AHT20Initialized, Command, SENSOR_ADDRESS};
 //!     # let expectations = vec![
 //!     #     // check_status immediately succeeds, we don't need to send Initialize.
-//!     #     Transaction::write(SENSOR_ADDRESS, vec![Command::CheckStatus as u8]),
 //!     #     Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
 //!     #     // send_trigger_measurement
 //!     #     Transaction::write(
@@ -21,7 +20,6 @@
 //!     #         ],
 //!     #     ),
 //!     #     // check_status - with ready bit set to 'ready' (off)
-//!     #     Transaction::write(SENSOR_ADDRESS, vec![Command::CheckStatus as u8]),
 //!     #     Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
 //!     #     // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
 //!     #     // These are taken from a run of the sensor.
@@ -126,11 +124,6 @@ pub const SENSOR_ADDRESS: u8 = 0b0011_1000; // This is I2C address 0x38;
 /// those parameters actually are. You should consider the command and specified parameters to be
 /// just one three-byte command. These can be found in the datasheet, Section 5.3, page 8, Table 9.
 pub enum Command {
-    CheckStatus = 0b0111_0001, // 0x71, Get a byte of status word.
-    // There are two usages for the CheckStatus command. You can use this on startup to check if
-    // you need to send the Initialize command. Use Status::Calibrated to see if the Initialize
-    // should be sent.  You can also use this after a TriggerMeasurement to see if data is ready to
-    // be read. If Status::Busy is returned, you need to wait longer before reading the data back.
     Initialize = 0b1011_1110, // 0xBE, Initialize and calibrate the sensor.
     // This command takes two bytes of parameter: 0b0000_1000 (0x08), then 0b0000_0000 (0x00).
     Calibrate = 0b1110_0001, // 0xE1, Calibrate - or return calibration status.
@@ -149,7 +142,7 @@ pub enum Command {
 pub enum Status {
     Busy = 0b1000_0000, // Status bit for busy - 8th bit enabled. 1<<7, 0x80
     // 1 is Busy measuring. 0 is "Free in dormant state" or "ready".
-    Calibrated = 0b0000_1000, // Status bit for calibrated - 4th bit enabled. 1<<4, 0x08.
+    Calibrated = 0b0000_1000, // Status bit for calibrated - 4th bit enabled. 1<<3, 0x08.
                               // 1 is Calibrated, 0 is uncalibrated. If 0, send Command::Initialize.
 }
 
@@ -214,7 +207,7 @@ impl SensorReading {
         let temperature_celcius = (temperature_val as f32) / ((1 << 20) as f32) * 200.0 - 50.0;
 
         SensorReading {
-            humidity: humidity_percent as f32,
+            humidity: humidity_percent,
             temperature: temperature_celcius,
         }
     }
@@ -367,10 +360,8 @@ where
     ///
     /// This is used by both measure_once and init.
     fn check_status(&mut self) -> Result<SensorStatus, Error<E>> {
-        let command: [u8; 1] = [Command::CheckStatus as u8];
         let mut read_buffer = [0u8; 1];
 
-        self.i2c.write(self.address, &command).map_err(Error::I2c)?;
         self.i2c
             .read(self.address, &mut read_buffer)
             .map_err(Error::I2c)?;
@@ -384,7 +375,6 @@ where
     /// After sending initialize, there is a required 40ms wait period and verification
     /// that the sensor reports itself calibrated. See the `init` method.
     fn send_initialize(&mut self) -> Result<(), Error<E>> {
-        // Send CheckStatus, read one byte back.
         let command: [u8; 3] = [
             // Initialize = 0b1011_1110. Equivalent to 0xBE, Section 5.3, page 8, Table 9
             Command::Initialize as u8,
@@ -706,15 +696,10 @@ mod tests {
         let _aht20_2 = AHT20::new(mock_i2c_2, SENSOR_ADDRESS);
     }
 
-    /// Test sending the CheckStatus i2c command, and read a status byte back.
+    /// Test reading a status byte.
     #[test]
     fn check_status() {
-        let expectations = vec![
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
-            // 4th bit being 1 signifies the sensor being calibrated.
-            // Equiv to 0x01 << 3, or 8 (dec) or 0x08
-            Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
-        ];
+        let expectations = vec![Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000])];
         let mock_i2c = I2cMock::new(&expectations);
 
         let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
@@ -753,7 +738,6 @@ mod tests {
         // This test has check_status return an already calibrated sensor. This means
         // that send_initialize is not called.
         let expectations = vec![
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             // 4th bit being 1 signifies the sensor being calibrated.
             // Equiv to 0x01 << 3, or 8 (dec) or 0x08
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
@@ -778,8 +762,6 @@ mod tests {
         // to send_initialize is done to initialize and calibrate the sensor. A second
         // call to check_status verifies the new calibrated status.
         let expectations = vec![
-            // The first two transactions are check_status
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             // 4th bit being 0 signifies the sensor not being calibrated.
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_0000]),
             // This is send_initialize
@@ -793,7 +775,6 @@ mod tests {
             ),
             // One more check_status will be called, this time with the 4th bit set
             // to 1 - signifying the sensor is now calibrated and we can finish the init.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
         ];
         let mock_i2c = I2cMock::new(&expectations);
@@ -862,7 +843,6 @@ mod tests {
             ),
             // check_status called. 4th bit set to to 1 - signifying the sensor is calibrated 8th
             // bit set to 0 (not busy), signalling that a measurement is ready for us to read.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
             // These are taken from a run of the sensor.
@@ -910,7 +890,6 @@ mod tests {
             ),
             // check_status called. 4th bit set to to 1 - signifying the sensor is calibrated 8th
             // bit set to 0 (not busy), signalling that a measurement is ready for us to read.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             // NOTE: This read says we're not busy, that is "ready".
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
@@ -965,10 +944,8 @@ mod tests {
             ),
             // check_status called. 4th bit set to to 1 - signifying the sensor is calibrated 8th
             // bit set to 1 (busy), signalling that we should wait for the sensor.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b1000_1000]),
             // Next time round, we say that the sensor is good to go.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
             // These are taken from a run of the sensor.
@@ -1014,7 +991,6 @@ mod tests {
                 ],
             ),
             // Check status, and  we say that the sensor is good to go.
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
             // These are taken from a run of the sensor.
@@ -1067,7 +1043,6 @@ mod tests {
                 ],
             ),
             // check_status - with ready bit set to 'ready' (off)
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
             // These are taken from a run of the sensor.
@@ -1121,7 +1096,6 @@ mod tests {
                 ],
             ),
             // check_status - with ready bit set to 'ready' (off)
-            Transaction::write(SENSOR_ADDRESS, vec![super::Command::CheckStatus as u8]),
             Transaction::read(SENSOR_ADDRESS, vec![0b0000_1000]),
             // We can now read 7 bytes. status byte, 5 data bytes, crc byte.
             // These are taken from a run of the sensor.
