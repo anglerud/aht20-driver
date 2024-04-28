@@ -660,7 +660,7 @@ mod tests {
     #[test]
     fn sensorstatus_is_ready() {
         let status = super::SensorStatus::new(0x00);
-        assert_eq!(status.is_ready(), true);
+        assert!(status.is_ready());
     }
 
     /// Test SensorStatus reporting being busy.
@@ -669,7 +669,7 @@ mod tests {
         // 8th bit being 1 signifies "busy"
         // Equiv to 0x01 << 7, or 128 (dec) or 0x80 (hex)
         let status = super::SensorStatus::new(0b1000_0000);
-        assert_eq!(status.is_ready(), false);
+        assert!(!status.is_ready());
     }
 
     /// Test SensorStatus reporting being calibrated.
@@ -678,14 +678,14 @@ mod tests {
         // 4th bit being 1 signifies the sensor being calibrated.
         // Equiv to 0x01 << 3, or 8 (dec) or 0x08
         let status = super::SensorStatus::new(0b0000_1000);
-        assert_eq!(status.is_calibrated(), true);
+        assert!(status.is_calibrated());
     }
 
     /// Test SensorStatus reporting being uncalibrated.
     #[test]
     fn sensorstatus_is_not_calibrated() {
         let status = super::SensorStatus::new(0b0000_0000);
-        assert_eq!(status.is_calibrated(), false);
+        assert!(!status.is_calibrated());
     }
 
     /// Test creating new AHT20 sensors.
@@ -711,7 +711,7 @@ mod tests {
 
         let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
         let status = aht20.check_status().unwrap();
-        assert_eq!(status.is_calibrated(), true);
+        assert!(status.is_calibrated());
 
         let mut mock = aht20.destroy().i2c;
         mock.done(); // verify expectations
