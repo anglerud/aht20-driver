@@ -66,7 +66,7 @@
 //!              Wait 40 ms
 //!                  │
 //!                  ▼
-//!   Command::CheckStatus  (0x71)    ◄───    Wait 10 ms
+//!           Read status byte    ◄───     Wait 10 ms
 //!                  │                           ▲
 //!                  ▼                           │
 //!          Status::Calibrated ──► No ──► Command::Initialize (0xBE)
@@ -81,7 +81,7 @@
 //!             Wait 80 ms                 │
 //!                  │                     │
 //!                  ▼                     │
-//!   Command::CheckStatus (0x71) ◄──┐     │
+//!           Read status byte    ◄──┐     │
 //!                  │               │     │
 //!                  ▼               │     │
 //!             Status::Busy  ───►  Yes    │
@@ -308,7 +308,7 @@ impl<E, I> AHT20<I>
 where
     I: i2c::Read<Error = E> + i2c::Write<Error = E>,
 {
-    /// Initializes the SCD30 driver.
+    /// Initializes the AHT20 driver.
     ///
     /// This consumes the I2C bus `I`. Before you can get temperature and humidity measurements,
     /// you must call the `init` method which calibrates the sensor. The address will almost always
@@ -329,7 +329,7 @@ where
     ///             Wait 40 ms
     ///                 │
     ///                 ▼
-    ///  Command::CheckStatus (0x71)   ◄───    Wait 10 ms
+    ///           Read  status byte    ◄───    Wait 10 ms
     ///                 │                           ▲
     ///                 ▼                           │
     ///         Status::Calibrated ──► No ──► Command::Initialize (0xBE)
@@ -345,21 +345,27 @@ where
 
         while !self.check_status()?.is_calibrated() {
             self.send_initialize()?;
-            defmt::debug!("init: waiting for calibrated, 10ms.");
+            defmt::debug!("init: waiting for sensor to report being calibrated, 10ms.");
             delay.delay_ms(10_u16);
         }
 
+        defmt::debug!("init: sensor reporting being calibrated, init done.");
         Ok(AHT20Initialized { aht20: self })
     }
 
-    /// check_Status asks the AHT20 sensor to report its status.
+    /// check_Status reads a status byte from the AHT20 sensor to check its status.
     ///
     /// The sensor can be calibrated or not, also busy generating a sensor measurement or ready.
     /// This method returns the SensorStatus struct, which you can use to determine what the state
     /// of the sensor is.
     ///
+    /// NOTE: The documentation suggests that we send a CheckStatus (0x71) command, followed by a
+    ///       read. Experience (https://github.com/anglerud/aht20-driver/pull/10) indicates that we
+    ///       can create a hang writing that command, and that just reading a status byte works.
+    ///
     /// This is used by both measure_once and init.
     fn check_status(&mut self) -> Result<SensorStatus, Error<E>> {
+        defmt::debug!("check_status: requesting a status check from sensor.");
         let mut read_buffer = [0u8; 1];
 
         self.i2c
@@ -375,6 +381,7 @@ where
     /// After sending initialize, there is a required 40ms wait period and verification
     /// that the sensor reports itself calibrated. See the `init` method.
     fn send_initialize(&mut self) -> Result<(), Error<E>> {
+        defmt::debug!("send_initialize: requesting sensor to initialize itself.");
         let command: [u8; 3] = [
             // Initialize = 0b1011_1110. Equivalent to 0xBE, Section 5.3, page 8, Table 9
             Command::Initialize as u8,
@@ -422,7 +429,7 @@ where
     ///             Wait 80 ms                 │
     ///                  │                     │
     ///                  ▼                     │
-    ///   Command::CheckStatus (0x71) ◄──┐     │
+    ///           Read status byte    ◄──┐     │
     ///                  │               │     │
     ///                  ▼               │     │
     ///             Status::Busy  ───►  Yes    │
