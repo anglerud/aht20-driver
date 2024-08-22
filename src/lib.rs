@@ -252,7 +252,7 @@ impl SensorReading {
         // In the final 32-bit value they're these ones: 0x0000_0000_0000_1111_1111_0000_0000_0000
         let left_bits_humidity: u32 = (humidity_bytes[0] as u32) << 12;
         // In the final 32-bit value they're these ones: 0x0000_0000_0000_0000_0000_1111_1111_0000
-        let middle_bits_humidity: u32 = (humidity_bytes[0] as u32) << 4;
+        let middle_bits_humidity: u32 = (humidity_bytes[1] as u32) << 4;
         // We combine them to form the complete 20 bits: 0x0000_0000_0000_1111_1111_1111_1111_1111
         let humidity_val: u32 = left_bits_humidity | middle_bits_humidity | right_bits_humidity;
 
@@ -1080,10 +1080,10 @@ mod tests {
         let mock = &mut aht20_init.destroy().aht20.i2c;
         mock.done(); // verify expectations
 
-        // Temp was 22.52C and humidity 39.61% when above data taken.
+        // Temp was 22.52C and humidity 39.73% when above data taken.
         assert!(measurement.temperature > 22.5);
         assert!(measurement.temperature < 22.6);
-        assert!(measurement.humidity > 39.6 && measurement.humidity < 39.7);
+        assert!(measurement.humidity > 39.7 && measurement.humidity < 39.8);
     }
 
     /// Test a measurement, without using floating point math.
@@ -1133,7 +1133,7 @@ mod tests {
         let mock = &mut aht20_init.destroy().aht20.i2c;
         mock.done(); // verify expectations
 
-        // Temp was 22.52C and humidity 39.61% when above data taken.
+        // Temp was 22.52C and humidity 39.73% when above data taken.
         // No fp mode will found that to 22.0C and 39.0%.
         println!("temp: {:.2}", measurement.temperature);
         println!("humidity: {:.2}", measurement.humidity);
