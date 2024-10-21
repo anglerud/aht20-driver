@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added continuous integration via Github actions
 
 
+## [1.2.2] - 2024-10-21
+
+### Added
+
+* A feature flag for defmt. Thank you to [Andrew Straw
+  (astraw)](https://github.com/astraw) for the addition.
+
+
+### Fixed
+
+* An error in the humidity calculation was fixed by [Samuel Holland
+  (smaeul)](https://github.com/smaeul).
+
+
 ## [1.2.1] - 2024-04-28
 
 ### Fixed

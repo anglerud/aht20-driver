@@ -70,6 +70,48 @@ calculations faster for those microcontrollers. The trade-off is that the
 accuracy is limited - only round numbers are returned from this function.
 
 
+### Defmt
+
+[Defmt](https://defmt.ferrous-systems.com/), the embedded logging framework, is
+used by default by this library. If you don't want to use `defmt` logging in
+your project, then you can turn it off. See the Feature flags section below.
+
+To use this library with `defmt` active in your project - you'll need to follow
+the [defmt setup guide](https://defmt.ferrous-systems.com/setup). The steps are
+simple, and boil down to adding a linker argument to your `.cargo/config.toml`,
+selecting a logging implementation (like defmt-rtt), and importing it into your
+code (`use defmt_rtt as _;` for the aforementioned implementation).
+
+By default the warning level is set to "warn". To see logs that are of lower
+severity, (like info) you can change the log level by setting the `DEFMT_LOG`
+env var. Example:
+
+```DEFMT_LOG=info cargo run```
+
+
+## Feature flags
+
+There is currently only one feature flag `use-defmt`, and it's on by default.
+
+
+### use-defmt
+
+This feature is on my default. Disabling the default features with
+`default-features = false` in your Cargo.toml will let you turn off defmt
+logging. Example:
+
+```
+aht20-driver = { version = "1.2.2", default-features = false }
+```
+
+If there's more features in the future, and you'd like to disable default
+features but keep using defmt logging then you can turn the feature on with:
+
+```
+aht20-driver = { version = "1.2.2", default-features = false , features = ["use-defmt"] }
+```
+
+
 ## Contributing
 
 Please open an issue, start a conversation under discussions, or submit a pull
