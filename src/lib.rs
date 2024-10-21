@@ -639,7 +639,7 @@ where
 ///
 /// The **N is the Nth bit (zero indexed).
 /// > The most significant bit [(x**8)] is left out in the hexadecimal representation
-/// So that the leaves bit 0 (the +1 we do), 4, 5
+/// \>So that the leaves bit 0 (the +1 we do), 4, 5
 ///
 /// So that gives us:
 ///
