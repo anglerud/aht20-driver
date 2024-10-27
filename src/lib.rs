@@ -294,6 +294,19 @@ pub enum Error<E> {
     Internal,
 }
 
+impl<E> core::fmt::Display for Error<E> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        match self {
+            Error::I2c(_e) => write!(f, "I2C error"),
+            Error::InvalidCrc => write!(f, "invalid CRC error"),
+            Error::UnexpectedBusy => write!(f, "unexpected busy error"),
+            Error::Internal => write!(f, "internal ATH20 driver error"),
+        }
+    }
+}
+
+impl<E> core::error::Error for Error<E> where E: core::fmt::Debug {}
+
 /// An AHT20 sensor on the I2C bus `I`.
 ///
 /// The address of the sensor will be `SENSOR_ADDRESS` from this package, unless there is some kind

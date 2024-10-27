@@ -11,6 +11,7 @@ homepage = "https://github.com/anglerud/aht20-driver"
 repository = "https://github.com/anglerud/aht20-driver"
 documentation = "https://docs.rs/aht20-driver"
 readme = "README.md"
+rust-version = "1.81"
 
 [dependencies]
 embedded-hal = "1.0.0"
