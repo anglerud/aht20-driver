@@ -1,7 +1,7 @@
 [package]
 name = "aht20-driver"
 authors = ["Rikard Anglerud <rikard@anglerud.com>"]
-version = "1.2.1"
+version = "1.2.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 categories = ["embedded", "hardware-support", "no-std"]
@@ -17,6 +17,7 @@ embedded-hal = "1.0.0"
 
 [dependencies.defmt]
 version = "0.3.6"
+optional = true
 
 [dependencies.crc-any]
 version = "2.4.4"
@@ -28,3 +29,7 @@ embedded-hal-mock =  "0.11.1"
 [dev-dependencies.defmt]
 version = "0.3.6"
 features = ["unstable-test"]
+
+[features]
+default = ["use-defmt"]
+use-defmt = ["dep:defmt"]
