@@ -13,7 +13,7 @@ documentation = "https://docs.rs/aht20-driver"
 readme = "README.md"
 
 [dependencies]
-embedded-hal = "0.2.7"
+embedded-hal = "1.0.0"
 
 [dependencies.defmt]
 version = "0.3.6"
@@ -24,7 +24,7 @@ version = "2.4.4"
 default-features = false
 
 [dev-dependencies]
-embedded-hal-mock =  "0.8.0"
+embedded-hal-mock =  "0.11.1"
 
 [dev-dependencies.defmt]
 version = "0.3.6"
