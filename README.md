@@ -6,7 +6,7 @@
 
 Rust embedded-HAL driver for the AHT20 temperature and humidity sensor.
 
-![Blue Pill with AHT20 sensor](project_example.jpg)
+![Raspberry Pi Pico with AHT20 sensor](examples/rp-pico/breadboard_photo.jpg)
 
 You can read my blog post [AHT20 thermometer
 driver](http://www.rawmeat.org/code/20220130-aht20_driver/) which details the
@@ -16,7 +16,7 @@ creation of this driver.
 ## Example
 
 There is an example app for the Blue Pill board in the
-[examples/blue_pill/](examples/blue_pill/) directory. You can run that with
+[examples/rp-pico/](examples/rp-pico/) directory. You can run that with
 `cargo run --release`. It will read the temperature and humidity and print it
 the console.
 
