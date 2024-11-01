@@ -8,7 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-* Added continuous integration via Github actions
+
+## [2.0.0] - 2024-11-01
+
+### Changed
+
+* Upgrade to the embedded HAL 1.0 release. Thank you to [Andrew Straw
+  (astraw)](https://github.com/astraw) for the addition.
+* Impement `core::error::Error` for our `aht20_driver::Error<E>`, again thank
+  you to Andrew for this work. Note that this increases our Minimum Supported
+  Rust Version to 1.81.
 
 
 ## [1.2.2] - 2024-10-21
