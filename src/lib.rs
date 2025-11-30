@@ -40,14 +40,14 @@
 //!     # ];
 //!     # let mock_i2c = I2cMock::new(&expectations);
 //!     # let mut mock_delay = MockDelay::new();
-//!     let mut aht20_uninit = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+//!     let aht20_uninit = AHT20::new(mock_i2c, SENSOR_ADDRESS);
 //!     let mut aht20 = aht20_uninit.init(&mut mock_delay).unwrap();
 //!     let measurement = aht20.measure(&mut mock_delay).unwrap();
 //!
 //!     println!("temperature (aht20): {:.2}C", measurement.temperature);
 //!     println!("humidity (aht20): {:.2}%", measurement.humidity);
 //!
-//!     aht20_uninit.destroy().done();
+//!     aht20.destroy().destroy().done();
 //!
 //! [AHT20 Datasheet](https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/AHT20-datasheet-2020-4-16.pdf?1591047915)
 //!
@@ -311,6 +311,7 @@ impl<E> core::error::Error for Error<E> where E: core::fmt::Debug {}
 ///
 /// The address of the sensor will be `SENSOR_ADDRESS` from this package, unless there is some kind
 /// of special address translating hardware in use.
+#[derive(Clone, Copy)]
 pub struct AHT20<I>
 where
     I: I2c,
@@ -353,7 +354,7 @@ where
     ///                Yes
     /// ```
     pub fn init(
-        &mut self,
+        mut self,
         delay: &mut impl DelayNs,
     ) -> Result<AHT20Initialized<I>, Error<I::Error>> {
         delay.delay_ms(40);
@@ -425,14 +426,14 @@ where
 /// AHT20Initialized is returned by AHT20::init() and the sensor is ready to read from.
 ///
 /// In this state you can trigger a measurement with `.measure(&mut delay)`.
-pub struct AHT20Initialized<'a, I>
+pub struct AHT20Initialized<I>
 where
     I: I2c,
 {
-    aht20: &'a mut AHT20<I>,
+    aht20: AHT20<I>,
 }
 
-impl<'a, I> AHT20Initialized<'a, I>
+impl<I> AHT20Initialized<I>
 where
     I: I2c,
 {
@@ -623,7 +624,7 @@ where
     }
 
     /// Destroys this initialized driver and lets you release the I2C bus `I`
-    pub fn destroy(self) -> &'a mut AHT20<I> {
+    pub fn destroy(self) -> AHT20<I> {
         self.aht20
     }
 }
@@ -665,7 +666,10 @@ fn compute_crc(bytes: &[u8]) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{AHT20Initialized, Error, AHT20, SENSOR_ADDRESS};
+    use super::AHT20Initialized;
+    use super::Error;
+    use super::AHT20;
+    use super::SENSOR_ADDRESS;
     use embedded_hal_mock::eh1::delay::NoopDelay as MockDelay;
     use embedded_hal_mock::eh1::i2c::Mock as I2cMock;
     use embedded_hal_mock::eh1::i2c::Transaction;
@@ -769,10 +773,10 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        aht20.init(&mut mock_delay).unwrap();
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let aht20_init = aht20.init(&mut mock_delay).unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -804,10 +808,10 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        aht20.init(&mut mock_delay).unwrap();
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let aht20_init = aht20.init(&mut mock_delay).unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -821,11 +825,11 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         aht20_init.soft_reset(&mut mock_delay).unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -842,11 +846,11 @@ mod tests {
         )];
         let mock_i2c = I2cMock::new(&expectations);
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         aht20_init.send_trigger_measurement().unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -888,11 +892,11 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         aht20_init.measure_once(&mut mock_delay).unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -937,8 +941,8 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         // We received a ready from the check_status method, then a busy in the CRC-checked
         // status byte - and therefore we got the UnexpectedBusy.
         assert_eq!(
@@ -946,7 +950,7 @@ mod tests {
             Err(Error::UnexpectedBusy)
         );
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -991,11 +995,11 @@ mod tests {
         let mock_i2c = I2cMock::new(&expectations);
         let mut mock_delay = MockDelay::new();
 
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         aht20_init.measure_once(&mut mock_delay).unwrap();
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -1039,14 +1043,14 @@ mod tests {
         let mut mock_delay = MockDelay::new();
 
         // test and verify
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         match aht20_init.measure_once(&mut mock_delay) {
             Ok(_) => panic!("CRC is wrong and measure_once should not pass."),
             Err(err_type) => assert_eq!(err_type, Error::InvalidCrc),
         }
 
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
     }
 
@@ -1089,12 +1093,12 @@ mod tests {
         let mut mock_delay = MockDelay::new();
 
         // test
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         let measurement = aht20_init.measure(&mut mock_delay).unwrap();
 
         // verification
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
 
         // Temp was 22.52C and humidity 39.73% when above data taken.
@@ -1142,12 +1146,12 @@ mod tests {
         let mut mock_delay = MockDelay::new();
 
         // test
-        let mut aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
-        let mut aht20_init = AHT20Initialized { aht20: &mut aht20 };
+        let aht20 = AHT20::new(mock_i2c, SENSOR_ADDRESS);
+        let mut aht20_init = AHT20Initialized { aht20 };
         let measurement = aht20_init.measure_no_fp(&mut mock_delay).unwrap();
 
         // verification
-        let mut mock = aht20.destroy();
+        let mut mock = aht20_init.destroy().destroy();
         mock.done(); // verify expectations
 
         // Temp was 22.52C and humidity 39.73% when above data taken.
