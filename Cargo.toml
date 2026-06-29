@@ -21,7 +21,7 @@ version = "0.3.6"
 optional = true
 
 [dependencies.crc-any]
-version = "2.5.0"
+version = "3.0.1"
 default-features = false
 
 [dev-dependencies]
